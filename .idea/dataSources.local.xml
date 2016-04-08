@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="dataSourceStorageLocal">
+    <data-source name="MySQL - github@localhost" uuid="96ca7d61-bf04-47a7-b704-6918e25e89b9">
+      <secret-storage>master_key</secret-storage>
+      <user-name>OneAnt</user-name>
+      <schema-pattern>github.*</schema-pattern>
+      <default-schemas>github.*</default-schemas>
+    </data-source>
+  </component>
+</project>

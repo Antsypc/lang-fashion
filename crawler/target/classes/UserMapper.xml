@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace="User">
+
+    <select id="getUserById" resultType="User">
+        SELECT * FROM user WHERE id = #{id}
+    </select>
+
+    <select id="getUserByName" resultType="User">
+        SELECT * FROM user WHERE login = #{login}
+    </select>
+
+    <select id="getMaxUserId" resultType="int">
+        SELECT max(id) FROM user
+    </select>
+
+
+    <insert id="insertUser">
+        INSERT INTO user (login, id, type, site_admin, name, company, location, email, public_repos,
+        public_gists, followers, following, created_at, updated_at) VALUES
+        (#{login}, #{id}, #{type}, #{siteAdmin}, #{name}, #{company}, #{location}, #{email}, #{publicRepos},
+        #{publicGists}, #{followers}, #{following}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <insert id="insertBatch" parameterType="java.util.ArrayList">
+        INSERT INTO user (login, id, type, site_admin, name, company, location, email, public_repos,
+        public_gists, followers, following, created_at, updated_at) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.login}, #{item.id}, #{item.type}, #{item.siteAdmin}, #{item.name}, #{item.company},
+            #{item.location}, #{item.email}, #{item.publicRepos}, #{item.publicGists}, #{item.followers},
+            #{item.following}, #{item.createdAt}, #{item.updatedAt})
+        </foreach>
+    </insert>
+</mapper>

@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="war" name="lang-fashion:war">
+    <output-path>$PROJECT_DIR$/target</output-path>
+    <root id="archive" name="langfashion-github-1.0-SNAPSHOT.war">
+      <element id="artifact" artifact-name="lang-fashion:war exploded" />
+    </root>
+  </artifact>
+</component>

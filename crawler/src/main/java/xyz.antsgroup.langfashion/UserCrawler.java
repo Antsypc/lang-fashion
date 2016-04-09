@@ -19,7 +19,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Crawler user from github.com.
+ * Crawl users on github.com.
  *
  * @author ants_ypc
  * @version 1.0 4/7/16
@@ -31,15 +31,15 @@ public class UserCrawler {
     private static final String token = "token 08d6a152b9f329b88753b8dacce5d1448b258c12";
 
     private SqlSessionFactory sessionFactory;
-    private String since = "";
-    private ArrayList<String> userList = new ArrayList<>();
-    private boolean running;
+    private String since = "";                              // crawl from since which is github recommended
+    private ArrayList<String> userList = new ArrayList<>(); // crawl username and add to userList variable firstly and then crawl every user special info in turn.
+    private boolean running;                                // control variable
 
 
     /**
      * constructor UserCrawler.
-     * Initialize the properties for mybatis and other works.It'll crawler user on github.com from the next one which
-     * is not existing in the database.So, it read the max id from user table and initialize `since`.
+     * Initialize the properties for mybatis and other works.It'll crawl users on github.com from the one who
+     * is not existing in the database.So, it read the max id from user table and initialize since variable.
      */
     public UserCrawler() {
         logger.info("UserCrawler constructor.");
@@ -60,6 +60,9 @@ public class UserCrawler {
      */
     public int crawlUsers() {
         int crawlNum = 0;
+
+        // If there is no more users to crawl on github, well, since variable may be empty or null,
+        // and then stop crawl.
         while (!since.isEmpty() && since != null && running) {
             logger.info(crawlNum + " crawled,since variable: " + since);
             crawlUserLoginName(since);
@@ -78,13 +81,12 @@ public class UserCrawler {
         Pattern pattern = Pattern.compile("<https://api.github.com/users\\?since=([0-9]*)>.*");
         Matcher matcher = pattern.matcher(link);
         since = matcher.matches() ? matcher.group(1) : null;
-//        System.out.println("parse since:" + since);
     }
 
 
     /**
      * Get login name of user.Because we cannot get enough information of users
-     * by the api 'https://api.github.com/users?since=' , we have to get login name and save to list temporarily.
+     * by the api 'https://api.github.com/users?since=' , we have to get login name and save to userList temporarily.
      *
      * @param since The user id to start from.
      */
@@ -92,7 +94,7 @@ public class UserCrawler {
         try {
             URLConnection connection = new URL(usersUrlPrefix + since).openConnection();
             connection.setConnectTimeout(3000);
-//            connection.setRequestProperty("Authorization", token);
+            connection.setRequestProperty("Authorization", token);
             connection.connect();
 
             // check http response headers. If we can't get message successfully,
@@ -104,8 +106,6 @@ public class UserCrawler {
                 }
                 return;
             }
-            System.out.println(connection.getHeaderField("X-RateLimit-Remaining"));
-            System.out.println(connection.getHeaderField("X-RateLimit-Reset"));
 
             setSinceFromLink(connection.getHeaderField("Link"));
 
@@ -139,16 +139,14 @@ public class UserCrawler {
                 try {
                     URLConnection connection = new URL(userUrlPrefix + username).openConnection();
                     connection.setConnectTimeout(3000);
-//                    connection.setRequestProperty("Authorization", token);
+                    connection.setRequestProperty("Authorization", token);
                     connection.connect();
 
-                    // check http response headers
+                    // check http response headers and handle exception
                     if (!connection.getHeaderField("Status").equals("200 OK")) {
                         httpDenyHandler(connection);
                         return 0;
                     }
-                System.out.println(connection.getHeaderField("X-RateLimit-Remaining"));
-                System.out.println(connection.getHeaderField("X-RateLimit-Reset"));
 
                     try (InputStream inStream = connection.getInputStream();
                          BufferedReader reader = new BufferedReader(new InputStreamReader(inStream))) {
@@ -156,7 +154,6 @@ public class UserCrawler {
                         ObjectMapper mapper = new ObjectMapper();
                         User user = mapper.readValue(reader, User.class);
                         list.add(user);
-//                    System.out.println(user.getLogin() + " " + user.getId());
                     }
                 } catch (IOException e) {
                     logger.catching(e);
@@ -189,6 +186,7 @@ public class UserCrawler {
             long resetTime = Integer.valueOf(resetStr) * 1000L;
             long current = System.currentTimeMillis();
             try {
+                System.out.println("X-RateLimit-Remaining is limited.Sleep now on... it'll last for " + (resetTime - current + 2000) + " millisecond");
                 logger.info("X-RateLimit-Remaining is limited.Sleep now on...");
                 Thread.sleep(resetTime - current + 2000);
                 logger.info("Sleep over,continue to work.");
@@ -205,6 +203,7 @@ public class UserCrawler {
                 while ((line = reader.readLine()) != null) {
                     sb.append(line);
                 }
+                System.out.println("UserCrawl have to stop : " + status + "\n"+ sb.toString());
                 logger.error("UserCrawl have to stop : " + status + "\n"+ sb.toString());
             } catch (Exception e) {
                 e.printStackTrace();

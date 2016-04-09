@@ -16,7 +16,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Crawler the repository from github.com.
+ * Crawl repositories on github.com.
  *
  * @author ants_ypc
  * @version 1.0 4/7/16

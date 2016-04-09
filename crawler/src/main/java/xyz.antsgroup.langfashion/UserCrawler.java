@@ -84,22 +84,28 @@ public class UserCrawler {
 
     /**
      * Get login name of user.Because we cannot get enough information of users
-     * by the api https://api.github.com/users?since= , we have to get login name and save to list temporarily.
+     * by the api 'https://api.github.com/users?since=' , we have to get login name and save to list temporarily.
      *
-     * @param since The user id of this time to start.
+     * @param since The user id to start from.
      */
     private void crawlUserLoginName(String since) {
         try {
             URLConnection connection = new URL(usersUrlPrefix + since).openConnection();
             connection.setConnectTimeout(3000);
-            connection.setRequestProperty("Authorization", token);
+//            connection.setRequestProperty("Authorization", token);
             connection.connect();
 
-            // check http response status code
-//            System.out.println(connection.getHeaderField("Status"));    // 200 OK
-//            System.out.println(connection.getHeaderField("Link"));      // <https://api.github.com/users?since=368>; rel="next", <https://api.github.com/users{?since}>; rel="first"
-//            System.out.println(connection.getHeaderField("X-RateLimit-Remaining"));
-//            System.out.println(connection.getHeaderField("X-RateLimit-Reset"));
+            // check http response headers. If we can't get message successfully,
+            // we handle the exception and set since variable to right value according to local database.
+            if (!connection.getHeaderField("Status").equals("200 OK")) {
+                httpDenyHandler(connection);
+                try (SqlSession session = sessionFactory.openSession()){
+                    this.since = String.valueOf(((Integer) session.selectOne("User.getMaxUserId")).intValue());
+                }
+                return;
+            }
+            System.out.println(connection.getHeaderField("X-RateLimit-Remaining"));
+            System.out.println(connection.getHeaderField("X-RateLimit-Reset"));
 
             setSinceFromLink(connection.getHeaderField("Link"));
 
@@ -128,38 +134,86 @@ public class UserCrawler {
     private int crawlSaveUsers() {
         int crawlNum;
         ArrayList<User> list = new ArrayList<>();
-        for (String username : userList) {
-            try {
-                URLConnection connection = new URL(userUrlPrefix + username).openConnection();
-                connection.setConnectTimeout(3000);
-                connection.setRequestProperty("Authorization", token);
-                connection.connect();
+        try {
+            for (String username : userList) {
+                try {
+                    URLConnection connection = new URL(userUrlPrefix + username).openConnection();
+                    connection.setConnectTimeout(3000);
+//                    connection.setRequestProperty("Authorization", token);
+                    connection.connect();
 
-                // check http response status code
-//                System.out.println(connection.getHeaderField("Status"));    // 200 OK
-//                System.out.println(connection.getHeaderField("X-RateLimit-Remaining"));
-//                System.out.println(connection.getHeaderField("X-RateLimit-Reset"));
+                    // check http response headers
+                    if (!connection.getHeaderField("Status").equals("200 OK")) {
+                        httpDenyHandler(connection);
+                        return 0;
+                    }
+                System.out.println(connection.getHeaderField("X-RateLimit-Remaining"));
+                System.out.println(connection.getHeaderField("X-RateLimit-Reset"));
 
-                try (InputStream inStream = connection.getInputStream();
-                     BufferedReader reader = new BufferedReader(new InputStreamReader(inStream))) {
+                    try (InputStream inStream = connection.getInputStream();
+                         BufferedReader reader = new BufferedReader(new InputStreamReader(inStream))) {
 
-                    ObjectMapper mapper = new ObjectMapper();
-                    User user = mapper.readValue(reader, User.class);
-                    list.add(user);
+                        ObjectMapper mapper = new ObjectMapper();
+                        User user = mapper.readValue(reader, User.class);
+                        list.add(user);
 //                    System.out.println(user.getLogin() + " " + user.getId());
+                    }
+                } catch (IOException e) {
+                    logger.catching(e);
                 }
-            } catch (IOException e) {
-                logger.catching(e);
             }
-        }
 
-        try (SqlSession session = sessionFactory.openSession()) {
-            crawlNum = session.insert("User.insertList", list);
-            session.commit();
+            try (SqlSession session = sessionFactory.openSession()) {
+                crawlNum = session.insert("User.insertList", list);
+                session.commit();
+            }
         } finally {
             userList.clear();
         }
+
         return crawlNum;
+    }
+
+    /**
+     * If access denied by the server,or something else, we have to sleep for waiting or stop crawl.
+     *
+     * @param connection The connetion which came across error.
+     */
+    private void httpDenyHandler(URLConnection connection) {
+        String status = connection.getHeaderField("Status");
+        String resetStr = connection.getHeaderField("X-RateLimit-Reset");
+        String remain = connection.getHeaderField("X-RateLimit-Remaining");
+
+        // If the rate is limited, sleep for a while and continue to work again.
+        if (status.equals("403 Forbidden") && remain.equals("0")) {
+            long resetTime = Integer.valueOf(resetStr) * 1000L;
+            long current = System.currentTimeMillis();
+            try {
+                logger.info("X-RateLimit-Remaining is limited.Sleep now on...");
+                Thread.sleep(resetTime - current + 2000);
+                logger.info("Sleep over,continue to work.");
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        } else {
+            // otherwise, log the error and stop this UserCrawler.
+            try (InputStream inStream = connection.getInputStream();
+                 BufferedReader reader = new BufferedReader(new InputStreamReader(inStream))) {
+
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line);
+                }
+                logger.error("UserCrawl have to stop : " + status + "\n"+ sb.toString());
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                running = false;
+                userList.clear();
+            }
+        }
+
     }
 
     public boolean isRunning() {

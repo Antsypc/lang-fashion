@@ -18,26 +18,15 @@ import java.util.Locale;
  */
 public class Solution {
     public static void main(String[] args) {
-        String resource = "mybatis-config.xml";
-        InputStream is = UserCrawler.class.getClassLoader().getResourceAsStream(resource);
-        SqlSessionFactory sessionFactory = new SqlSessionFactoryBuilder().build(is, "development");
-        SqlSession session = sessionFactory.openSession();
-        List<User> list = new ArrayList<>();
-        User a = new User();
-        a.setLogin("ypc");
-        a.setId(13);
-        User b = new User();
-        b.setLogin("ypc");
-        b.setId(12);
-        list.add(a);
-        list.add(b);
-
-//        session.insert("User.insertUser", a);
-        for (User u : list) {
-            System.out.println(u);
+        try {
+            if(1 == 1) {
+                System.out.println(System.currentTimeMillis());
+                return;
+            }
+        } finally {
+            System.out.println("finally");
         }
-        System.out.println(session.insert("User.insertBatch", list));
-        session.commit();
-        System.out.println("finish.........");
+        System.out.println("last");
     }
 }
+

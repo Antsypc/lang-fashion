@@ -2,6 +2,8 @@ package xyz.antsgroup.langfashion.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import xyz.antsgroup.langfashion.json.DateTimeDeser;
 
 /**
  * A repository on github.com map to a table in database.
@@ -21,12 +23,15 @@ public class Repo {
     private boolean fork;
 
     @JsonProperty("created_at")
+    @JsonDeserialize(using = DateTimeDeser.class)
     private int createdAt;
 
     @JsonProperty("updated_at")
+    @JsonDeserialize(using = DateTimeDeser.class)
     private int updatedAt;
 
     @JsonProperty("pushed_at")
+    @JsonDeserialize(using = DateTimeDeser.class)
     private int pushedAt;
 
     private int size;

@@ -12,4 +12,19 @@
     <select id="getRepoByName" resultType="Repo">
         SELECT * FROM repo WHERE name = #{name}
     </select>
+
+    <select id="getMaxIdUser" resultType="User">
+        SELECT * FROM repo WHERE owner_id = (SELECT MAX(id) FROM user)
+    </select>
+
+    <insert id="insertList" parameterType="java.util.List">
+        INSERT INTO repo(id, name, owner_id, owner_login, language, fork, created_at, updated_at, pushed_at, size, stargazers_count, watchers_count, forks_count)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.id}, #{item.name}, #{item.ownerId}, #{item.ownerLogin}, #{item.language}, #{item.fork}, #{item.createdAt}, #{item.updatedAt},
+            #{item.pushedAt}, #{item.size}, #{item.stargazersCount}, #{item.watchersCount}, #{item.forksCount})
+        </foreach>
+
+    </insert>
+
 </mapper>

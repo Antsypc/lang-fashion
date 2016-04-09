@@ -3,4 +3,4 @@
 .jar
 .ear
 *target*
-.log
+*.log

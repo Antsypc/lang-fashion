@@ -29,14 +29,7 @@ public class UserCrawlerTest {
     public void testCrawlUsers() throws Exception {
         new UserCrawler().crawlUsers();
     }
-    
-    /** 
-     * Method: getUserByUrl(String since) 
-     */ 
-    @Test
-    public void testGetUsersByUrl() throws Exception {
-        new UserCrawler().getUsersByUrl("1");
-    }
+
 
     /**
      * Method: crawlSaveUsers()

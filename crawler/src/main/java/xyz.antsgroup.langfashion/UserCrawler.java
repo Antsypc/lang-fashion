@@ -50,7 +50,6 @@ public class UserCrawler {
             since = String.valueOf(((Integer) session.selectOne("User.getMaxUserId")).intValue());
         }
         running = true;
-        System.out.println(since);
         logger.info("UserCrawler has initialized");
     }
 
@@ -62,13 +61,11 @@ public class UserCrawler {
     public int crawlUsers() {
         int crawlNum = 0;
         while (!since.isEmpty() && since != null && running) {
-            System.out.println(crawlNum);
-            System.out.println(System.currentTimeMillis());
-            System.out.println("since:" + since);
-            getUsersByUrl(since);
+            logger.info(crawlNum + " crawled,since variable: " + since);
+            crawlUserLoginName(since);
             crawlNum += crawlSaveUsers();
-            System.out.println(System.currentTimeMillis());
         }
+        logger.info("UserCrawl Finished, totally crawled :" + crawlNum);
         return crawlNum;
     }
 
@@ -81,7 +78,7 @@ public class UserCrawler {
         Pattern pattern = Pattern.compile("<https://api.github.com/users\\?since=([0-9]*)>.*");
         Matcher matcher = pattern.matcher(link);
         since = matcher.matches() ? matcher.group(1) : null;
-        System.out.println("parse since:" + since);
+//        System.out.println("parse since:" + since);
     }
 
 
@@ -91,7 +88,7 @@ public class UserCrawler {
      *
      * @param since The user id of this time to start.
      */
-    public void getUsersByUrl(String since) {
+    private void crawlUserLoginName(String since) {
         try {
             URLConnection connection = new URL(usersUrlPrefix + since).openConnection();
             connection.setConnectTimeout(3000);
@@ -112,7 +109,6 @@ public class UserCrawler {
                 ObjectMapper mapper = new ObjectMapper();
                 User[] users = mapper.readValue(reader, User[].class);
 
-                // test if json parse ok
                 for (User u : users) {
                     userList.add(u.getLogin());
                 }
@@ -129,7 +125,7 @@ public class UserCrawler {
      *
      * @return The number of users saved to local database successfully.
      */
-    public int crawlSaveUsers() {
+    private int crawlSaveUsers() {
         int crawlNum;
         ArrayList<User> list = new ArrayList<>();
         for (String username : userList) {
@@ -150,7 +146,7 @@ public class UserCrawler {
                     ObjectMapper mapper = new ObjectMapper();
                     User user = mapper.readValue(reader, User.class);
                     list.add(user);
-                    System.out.println(user.getLogin() + " " + user.getId());
+//                    System.out.println(user.getLogin() + " " + user.getId());
                 }
             } catch (IOException e) {
                 logger.catching(e);
@@ -158,7 +154,7 @@ public class UserCrawler {
         }
 
         try (SqlSession session = sessionFactory.openSession()) {
-            crawlNum = session.insert("User.insertBatch", list);
+            crawlNum = session.insert("User.insertList", list);
             session.commit();
         } finally {
             userList.clear();

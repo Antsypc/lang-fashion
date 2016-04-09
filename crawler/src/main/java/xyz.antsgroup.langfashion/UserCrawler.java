@@ -33,7 +33,7 @@ public class UserCrawler {
     private SqlSessionFactory sessionFactory;
     private String since = "";                              // crawl from since which is github recommended
     private ArrayList<String> userList = new ArrayList<>(); // crawl username and add to userList variable firstly and then crawl every user special info in turn.
-    private boolean running;                                // control variable
+    private volatile boolean running;                       // control variable
 
 
     /**
@@ -62,7 +62,7 @@ public class UserCrawler {
         int crawlNum = 0;
 
         // If there is no more users to crawl on github, well, since variable may be empty or null,
-        // and then stop crawl.
+        // and then stop crawling.
         while (!since.isEmpty() && since != null && running) {
             logger.info(crawlNum + " crawled,since variable: " + since);
             crawlUserLoginName(since);
@@ -73,7 +73,7 @@ public class UserCrawler {
     }
 
     /**
-     * Get since which is next id of user.We need to get it from HTTP response header Link.
+     * Get since which is the next id of user.We need to get it from HTTP response header Link.
      *
      * @param link HTTP response header Link.
      */

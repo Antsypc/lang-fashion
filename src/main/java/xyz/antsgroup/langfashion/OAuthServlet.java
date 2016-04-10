@@ -43,10 +43,6 @@ public class OAuthServlet extends HttpServlet {
         if (code == null)
             response.sendRedirect("https://github.com/login/oauth/authorize?client_id=278c8bd9ee30db811671");
         else {
-//            request.setAttribute("client_id","278c8bd9ee30db811671");
-//            request.setAttribute("client_secret", "2d9efc2b18728b8dceffd31b95a9f3dcdf7e80ed");
-//            request.setAttribute("code", code);
-//            request.getRequestDispatcher("https://github.com/login/oauth/access_token").forward(request, response);
 
             URLConnection connection = new URL("https://github.com/login/oauth/access_token").openConnection();
             HttpURLConnection httpConnection = (HttpURLConnection) connection;

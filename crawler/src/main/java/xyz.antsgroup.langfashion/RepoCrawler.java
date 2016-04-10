@@ -55,12 +55,38 @@ public class RepoCrawler {
 
     public int crawlRepos() {
 
+        int reposNum = 0;
+        while (running) {
+            System.out.println(since);
+            retrieveUser(since + 1, since + 10);
+            since += 10;
 
-        return 0;
+            // check whether there is no more user
+            if (userQueue.isEmpty()) {
+                try (SqlSession session = sessionFactory.openSession()) {
+                    int max = session.selectOne("User.getMaxUserId");
+                    if (max > since - 101) continue;
+                    else break;
+                }
+            }
+
+            User tmp;
+            int saveRepos;
+            while (!userQueue.isEmpty() && running) {
+                tmp = userQueue.poll();
+                saveRepos = crawlUserReops(tmp);
+                if(saveRepos == -1)
+                    userQueue.offerFirst(tmp);
+                else
+                    reposNum += saveRepos;
+            }
+
+        }
+        return reposNum;
     }
 
     /**
-     * Retrive users from database where id is between idFrom and idTo.
+     * Retrive users from database where id is between idFrom and idTo, then save to userQueue variable.
      *
      * @param idFrom positive integer
      * @param idTo positive integer
@@ -86,10 +112,10 @@ public class RepoCrawler {
      * Crawl repositories of one user and save to local database.
      *
      * @param user whose repositories need to be crawled.
-     * @return the number of repositories successfully got.
+     * @return the number of repositories successfully got. If failed return -1.
      */
     public int crawlUserReops(User user) {
-        int reposNum = 0;
+        int reposNum;
         ArrayList<Repo> list = new ArrayList<>();
         String link = null;
         String reposUrl = reposOfUserPrefix + user.getId() + reposOfUserSuffix;
@@ -104,7 +130,7 @@ public class RepoCrawler {
                 // check http response headers and handle exception
                 if (!connection.getHeaderField("Status").equals("200 OK")) {
                     httpDenyHandler(connection);
-                    return 0;
+                    return -1;
                 }
 
                 // If user have so many repositories, server paged json, so we have to send another request
@@ -124,6 +150,8 @@ public class RepoCrawler {
 
                     ObjectMapper mapper = new ObjectMapper();
                     Repo[] repos = mapper.readValue(reader, Repo[].class);
+                    if (repos.length == 0) return 0;    // If there is no repositories, we cannot insert into database
+
                     list.addAll(Arrays.asList(repos));
                 }
             } catch (IOException e) {
@@ -186,6 +214,14 @@ public class RepoCrawler {
             }
         }
 
+    }
+
+    public boolean isRunning() {
+        return running;
+    }
+
+    public void setRunning(boolean running) {
+        this.running = running;
     }
 
 }

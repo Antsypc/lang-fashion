@@ -25,18 +25,24 @@ public class CrawlerMaster {
 //                break;
 //            }
 //        }
-        RepoCrawler repoCrawler = new RepoCrawler();
-        User user = new User();
-        user.setId(1);
-        user.setLogin("mojombo");
-        repoCrawler.crawlUserReops(user);
 
+        RepoThread repoThread = new RepoThread();
+        Thread thread = new Thread(repoThread);
+        thread.start();
 
+        String command;
+        Scanner cin = new Scanner(System.in);
+        while ((command = cin.next()) != null) {
+            if (command.equals("repostop")) {
+                repoThread.getRepoCrawler().setRunning(false);
+                break;
+            }
+        }
     }
 }
 
 class UserThread implements Runnable {
-    public UserCrawler userCrawler;
+    private UserCrawler userCrawler;
 
     @Override
     public void run() {
@@ -46,5 +52,19 @@ class UserThread implements Runnable {
 
     public UserCrawler getUserCrawler() {
         return userCrawler;
+    }
+}
+
+class RepoThread implements Runnable {
+    private RepoCrawler repoCrawler;
+
+    @Override
+    public void run() {
+        repoCrawler = new RepoCrawler();
+        repoCrawler.crawlRepos();
+    }
+
+    public RepoCrawler getRepoCrawler() {
+        return repoCrawler;
     }
 }

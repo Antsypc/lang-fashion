@@ -14,7 +14,7 @@
     </select>
 
     <select id="getMaxIdUser" resultType="User">
-        SELECT * FROM repo WHERE owner_id = (SELECT MAX(id) FROM user)
+        SELECT * FROM user WHERE id = (SELECT MAX(owner_id) FROM repo)
     </select>
 
     <insert id="insertList" parameterType="java.util.List">

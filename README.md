@@ -1,6 +1,5 @@
 lang-fashion
 ============
-> 为了开发时阅读方便,就不翻译成英文了.
 
 > github爬取接口官方文档 https://developer.github.com
 
@@ -8,7 +7,10 @@ lang-fashion
 
 项目用到的工具,框架主要有: `maven`,`mybatis`,`jackson`.
 
-其中的 web 项目主要是获取 github application 用户验证的 access_token.
+## 开发使用注意事项
+- 程序从 [CrawlerMaster.java](crawler/src/main/java/xyz.antsgroup.langfashion/CrawlerMaster.java) 启动.终止 `UserCrawler` 输入 `userstop`,
+终止 `RepoCrawler` 输入 `repostop`,切勿强制终止程序,会使数据丢失一部分.
+
 
 ## 开发过程中遇到及解决的问题
 

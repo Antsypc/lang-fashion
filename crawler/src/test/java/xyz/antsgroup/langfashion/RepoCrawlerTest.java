@@ -33,7 +33,7 @@ public class RepoCrawlerTest {
     @Test
     public void testCrawlRepos() throws Exception { 
     } 
-    
+
     
     /** 
      * Method: retrieveUser(int idFrom, int idTo) 
@@ -61,7 +61,7 @@ public class RepoCrawlerTest {
     public void testCrawlUserReops() throws Exception {
         RepoCrawler repoCrawler = new RepoCrawler();
         User user = new User();
-        user.setId(9144627);
+        user.setId(31);
 
         try {
             Method method = RepoCrawler.class.getDeclaredMethod("crawlUserReops", User.class);

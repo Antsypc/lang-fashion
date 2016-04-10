@@ -30,11 +30,10 @@ public class RepoCrawler {
     private static final Logger logger = LogManager.getLogger("RepoCrawler");
     private static final String token = "token 08d6a152b9f329b88753b8dacce5d1448b258c12";
     private static final Pattern pattern = Pattern.compile("<(https://api.github.com/user/\\d+/repos\\?page=\\d+&per_page=\\d+)>; rel=\"next\".*");
+    private static final String reposOfUserPrefix = "https://api.github.com/user/";
+    private static final String reposOfUserSuffix = "/repos?page=1&per_page=30";
 
-    private String reposOfUserPrefix = "https://api.github.com/user/";
-    private String reposOfUserSuffix = "/repos?page=1&per_page=30";
     private SqlSessionFactory sessionFactory;
-
     private LinkedList<User> userQueue = new LinkedList<>();
     private int since;
     private volatile boolean running;
@@ -44,22 +43,31 @@ public class RepoCrawler {
         String resource = "mybatis-config.xml";
         InputStream is = UserCrawler.class.getClassLoader().getResourceAsStream(resource);
         sessionFactory = new SqlSessionFactoryBuilder().build(is, "development");
-        try (SqlSession session = sessionFactory.openSession()){
-            User u = session.selectOne("Repo.getMaxIdUser");
-            if (u == null) since = 1;
-            else since = u.getId();
-        }
         running = true;
-        logger.info("RepoCrawler has initialized");
+
+        try (SqlSession session = sessionFactory.openSession()){
+
+            // Consider that there is no user in local database, and repo table is empty.
+            Integer rmax = session.selectOne("Repo.getMaxOwnerId");
+            Integer umax = session.selectOne("User.getMaxUserId");
+            if (umax == null) {
+                running = false;
+                logger.error("There is no user in local database.");
+            }
+            if (rmax == null) since = 0;
+            else since = rmax;
+
+        }
+
+        logger.info("RepoCrawler has initialized, since = " + since);
     }
 
     public int crawlRepos() {
 
         int reposNum = 0;
         while (running) {
-            System.out.println(since);
-            retrieveUser(since + 1, since + 10);
-            since += 10;
+            retrieveUser(since + 1, since + 21);
+            since += 21;
 
             // check whether there is no more user
             if (userQueue.isEmpty()) {
@@ -70,18 +78,21 @@ public class RepoCrawler {
                 }
             }
 
+            // crawl repositories for every user
             User tmp;
             int saveRepos;
             while (!userQueue.isEmpty() && running) {
                 tmp = userQueue.poll();
                 saveRepos = crawlUserReops(tmp);
+
+                // if crawl failed, recrawl for this user.
                 if(saveRepos == -1)
                     userQueue.offerFirst(tmp);
                 else
                     reposNum += saveRepos;
             }
-
         }
+        logger.info("RepoCrawl Finished, totally crawled :" + reposNum);
         return reposNum;
     }
 
@@ -109,13 +120,14 @@ public class RepoCrawler {
 
 
     /**
-     * Crawl repositories of one user and save to local database.
+     * Crawl every repository of one user and save to local database.If it couldn't crawl every repository
+     * once, we abandon repositories we already have got.
      *
      * @param user whose repositories need to be crawled.
      * @return the number of repositories successfully got. If failed return -1.
      */
     public int crawlUserReops(User user) {
-        int reposNum;
+        int reposNum = 0;
         ArrayList<Repo> list = new ArrayList<>();
         String link = null;
         String reposUrl = reposOfUserPrefix + user.getId() + reposOfUserSuffix;
@@ -136,7 +148,6 @@ public class RepoCrawler {
                 // If user have so many repositories, server paged json, so we have to send another request
                 link = connection.getHeaderField("Link");
                 if (link != null) {
-                    System.out.println(link);
                     Matcher matcher = pattern.matcher(link);
                     if (matcher.matches()) {
                         reposUrl = matcher.group(1);
@@ -150,12 +161,12 @@ public class RepoCrawler {
 
                     ObjectMapper mapper = new ObjectMapper();
                     Repo[] repos = mapper.readValue(reader, Repo[].class);
-                    if (repos.length == 0) return 0;    // If there is no repositories, we cannot insert into database
-
                     list.addAll(Arrays.asList(repos));
                 }
             } catch (IOException e) {
                 logger.catching(e);
+                logger.info(user);
+                list.clear();
             }
         } while (link != null);
 
@@ -167,9 +178,13 @@ public class RepoCrawler {
         }
 
         try (SqlSession session = sessionFactory.openSession()) {
-            reposNum = session.insert("Repo.insertList", list);
-            session.commit();
+            // If there is no repositories, we cannot insert into database
+            if (list.size() > 0) {
+                reposNum = session.insert("Repo.insertList", list);
+                session.commit();
+            }
         }
+        logger.info("user id=" + user.getId() + " has " + list.size() + " repos.");
         return reposNum;
     }
 
@@ -188,7 +203,6 @@ public class RepoCrawler {
             long resetTime = Integer.valueOf(resetStr) * 1000L;
             long current = System.currentTimeMillis();
             try {
-                System.out.println("X-RateLimit-Remaining is limited.Sleep now on... it'll last for " + (resetTime - current + 2000) + " millisecond");
                 logger.info("X-RateLimit-Remaining is limited.Sleep now on...");
                 Thread.sleep(resetTime - current + 2000);
                 logger.info("Sleep over,continue to work.");
@@ -205,7 +219,6 @@ public class RepoCrawler {
                 while ((line = reader.readLine()) != null) {
                     sb.append(line);
                 }
-                System.out.println("UserCrawl have to stop : " + status + "\n"+ sb.toString());
                 logger.error("UserCrawl have to stop : " + status + "\n"+ sb.toString());
             } catch (Exception e) {
                 e.printStackTrace();

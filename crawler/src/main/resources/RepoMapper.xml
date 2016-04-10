@@ -17,6 +17,10 @@
         SELECT * FROM user WHERE id = (SELECT MAX(owner_id) FROM repo)
     </select>
 
+    <select id="getMaxOwnerId" resultType="int">
+        SELECT MAX(owner_id) FROM repo
+    </select>
+
     <insert id="insertList" parameterType="java.util.List">
         INSERT INTO repo(id, name, owner_id, owner_login, language, fork, created_at, updated_at, pushed_at, size, stargazers_count, watchers_count, forks_count)
         VALUES

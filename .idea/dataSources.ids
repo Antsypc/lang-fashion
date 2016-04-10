@@ -9,7 +9,7 @@
     <schema name="" catalog="github"/>
     <table name="repo" schema="" catalog="github" type="TABLE">
       <column name="id" sqlType="INT" precision="10" scale="0" nullable="false" jdbcType="4"/>
-      <column name="name" sqlType="VARCHAR" precision="40" scale="0" nullable="false" jdbcType="12"/>
+      <column name="name" sqlType="VARCHAR" precision="255" scale="0" nullable="false" jdbcType="12"/>
       <column name="owner_id" sqlType="INT" precision="10" scale="0" nullable="false" jdbcType="4"/>
       <column name="owner_login" sqlType="VARCHAR" precision="40" scale="0" nullable="false" jdbcType="12"/>
       <column name="language" sqlType="VARCHAR" precision="20" scale="0" nullable="true" jdbcType="12"/>

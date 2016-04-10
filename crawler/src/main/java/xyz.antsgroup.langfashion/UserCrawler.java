@@ -29,9 +29,10 @@ public class UserCrawler {
     private static final String usersUrlPrefix = "https://api.github.com/users?since=";
     private static final String userUrlPrefix = "https://api.github.com/users/";
     private static final String token = "token 08d6a152b9f329b88753b8dacce5d1448b258c12";
+    private static final Pattern pattern = Pattern.compile("<https://api.github.com/users\\?since=([0-9]*)>.*");
 
     private SqlSessionFactory sessionFactory;
-    private String since = "";                              // crawl from since which is github recommended
+    private volatile String since = "";                              // crawl from since which is github recommended
     private ArrayList<String> userList = new ArrayList<>(); // crawl username and add to userList variable firstly and then crawl every user special info in turn.
     private volatile boolean running;                       // control variable
 
@@ -47,7 +48,12 @@ public class UserCrawler {
         InputStream is = UserCrawler.class.getClassLoader().getResourceAsStream(resource);
         sessionFactory = new SqlSessionFactoryBuilder().build(is, "development");
         try (SqlSession session = sessionFactory.openSession()){
-            since = String.valueOf(((Integer) session.selectOne("User.getMaxUserId")).intValue());
+            Integer maxId = session.selectOne("User.getMaxUserId");
+            if (maxId != null) {
+                since = String.valueOf(maxId.intValue());
+            } else {
+                since = "0";
+            }
         }
         running = true;
         logger.info("UserCrawler has initialized");
@@ -64,25 +70,12 @@ public class UserCrawler {
         // If there is no more users to crawl on github, well, since variable may be empty or null,
         // and then stop crawling.
         while (!since.isEmpty() && since != null && running) {
-            logger.info(crawlNum + " crawled,since variable: " + since);
             crawlUserLoginName(since);
             crawlNum += crawlSaveUsers();
         }
         logger.info("UserCrawl Finished, totally crawled :" + crawlNum);
         return crawlNum;
     }
-
-    /**
-     * Get since which is the next id of user.We need to get it from HTTP response header Link.
-     *
-     * @param link HTTP response header Link.
-     */
-    private void setSinceFromLink(String link) {
-        Pattern pattern = Pattern.compile("<https://api.github.com/users\\?since=([0-9]*)>.*");
-        Matcher matcher = pattern.matcher(link);
-        since = matcher.matches() ? matcher.group(1) : null;
-    }
-
 
     /**
      * Get login name of user.Because we cannot get enough information of users
@@ -107,7 +100,8 @@ public class UserCrawler {
                 return;
             }
 
-            setSinceFromLink(connection.getHeaderField("Link"));
+            Matcher matcher = pattern.matcher(connection.getHeaderField("Link"));
+            this.since = matcher.matches() ? matcher.group(1) : null;
 
             try (InputStream inStream = connection.getInputStream();
                  BufferedReader reader = new BufferedReader(new InputStreamReader(inStream))) {
@@ -132,7 +126,7 @@ public class UserCrawler {
      * @return The number of users saved to local database successfully.
      */
     private int crawlSaveUsers() {
-        int crawlNum;
+        int crawlNum = 0;
         ArrayList<User> list = new ArrayList<>();
         try {
             for (String username : userList) {
@@ -166,6 +160,7 @@ public class UserCrawler {
             }
         } finally {
             userList.clear();
+            logger.info(crawlNum + " crawled,since variable(next id): " + since);
         }
 
         return crawlNum;
@@ -186,8 +181,7 @@ public class UserCrawler {
             long resetTime = Integer.valueOf(resetStr) * 1000L;
             long current = System.currentTimeMillis();
             try {
-                System.out.println("X-RateLimit-Remaining is limited.Sleep now on... it'll last for " + (resetTime - current + 2000) + " millisecond");
-                logger.info("X-RateLimit-Remaining is limited.Sleep now on...");
+                logger.info("X-RateLimit-Remaining is limited.Sleep now on...it'll last for \" + (resetTime - current + 2000) + \" millisecond\"");
                 Thread.sleep(resetTime - current + 2000);
                 logger.info("Sleep over,continue to work.");
             } catch (InterruptedException e) {
@@ -203,7 +197,6 @@ public class UserCrawler {
                 while ((line = reader.readLine()) != null) {
                     sb.append(line);
                 }
-                System.out.println("UserCrawl have to stop : " + status + "\n"+ sb.toString());
                 logger.error("UserCrawl have to stop : " + status + "\n"+ sb.toString());
             } catch (Exception e) {
                 e.printStackTrace();

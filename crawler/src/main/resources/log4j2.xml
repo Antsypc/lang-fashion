@@ -9,15 +9,26 @@
         <File name="fileLog" fileName="crawler.log" append="false">
             <PatternLayout pattern="%d [%t] %-5level %logger{36} - %msg%mdc%n%throwable"/>
         </File>
+        <File name="UserCrawler" fileName="UserCrawler.log" append="false">
+            <PatternLayout pattern="%d [%t] %-5level %logger{36} - %msg%mdc%n%throwable"/>
+        </File>
+        <File name="RepoCrawler" fileName="RepoCrawler.log" append="false">
+            <PatternLayout pattern="%d [%t] %-5level %logger{36} - %msg%mdc%n%throwable"/>
+        </File>
     </appenders>
 
     <loggers>
-        <root level="trace">
+        <root level="warn">
             <AppenderRef ref="fileLog"/>
         </root>
-        <!-- 自定义其他logger -->
-        <!--<Logger name="com.foo.Bar" level="trace" additivity="false">-->
-            <!--<AppenderRef ref="Console"/>-->
-        <!--</Logger>-->
+        <!-- 自定义logger -->
+        <Logger name="UserCrawler" level="debug" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="UserCrawler"/>
+        </Logger>
+        <Logger name="RepoCrawler" level="debug" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RepoCrawler"/>
+        </Logger>
     </loggers>
 </configuration>

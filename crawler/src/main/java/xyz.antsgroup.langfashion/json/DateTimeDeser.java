@@ -20,6 +20,8 @@ public class DateTimeDeser extends JsonDeserializer<Integer> {
     @Override
     public Integer deserialize(JsonParser jsonParser, DeserializationContext deserializationContext) throws IOException, JsonProcessingException {
         String value = jsonParser.getValueAsString();
+        if (value.isEmpty() || value == null) return 0;
+
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
         Date date = null;
         try {

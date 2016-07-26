@@ -10,12 +10,3 @@ lang-fashion
 ## 开发使用注意事项
 - 程序从 [MasterCrawler.java](crawler/src/main/java/xyz.antsgroup.langfashion/MasterCrawler.java) 启动.终止 `UserCrawler` 输入 `userstop`,
 终止 `RepoCrawler` 输入 `repostop`,切勿强制终止程序,会使数据丢失一部分. 当提示结束时,输入任意字符退出程序.
-
-
-
-## 开发过程中遇到及解决的问题
-
-jackson 转换 Json,并存入数据库,其中的 entity 类设计和数据库表设计的问题比较揪心.
-
-Jackson 反序列化时,使用 `@JsonDeserialize`, 当原文本是 `null` 时,将会出错.目前不能解决,抛出异常时,
-先不管.出现错误的那个用户需要重新单独去爬取他的仓库数据.
